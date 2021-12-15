@@ -3,7 +3,8 @@ import './App.css';
 import React from 'react';
 import { createStore, applyMiddleware } from 'redux';
 import { connect } from 'react-redux';
-import thunk from 'redux-thunk';
+import {put, call, takeEvery} from 'redux-saga/effects';
+import createSagaMiddleware from 'redux-saga';
 
 // Reducer
 const initialState = {
@@ -50,41 +51,53 @@ const requestImageError = () => {
 };
 
 const fetchImage = () => {
-  return (dispatch) => {
-    dispatch(requestImage());
-    fetch('https://dog.ceo/api/breeds/image/random')
-    // fetch(`https://source.unsplash.com/random/300x200?sig=${Math.random()}`)
-      .then(res => res.json())
-      .then(
-        data => dispatch(requestImageSuccess(data)),
-        err => dispatch(requestImageError())
-      );
-  }
+  return { type: 'FETCHED_IMAGE' }
 };
 
-// Store
-export const store = createStore(
-  reducer,
-  applyMiddleware(thunk)
-);
+// Sagas
+function* watchFetchImage() {
+  yield takeEvery('FETCHED_IMAGE', fetchImageAsync);
+}
 
-// export default App;
-export class App extends React.Component {
+function* fetchImageAsync() {
+  try {
+    yield put(requestImage());
+    const data = yield call(() => {
+      return fetch('https://dog.ceo/api/breeds/image/random')
+              .then(res => res.json())
+      }
+    );
+    yield put(requestImageSuccess(data));
+  } catch (error) {
+    yield put(requestImageError());
+  }
+}
+
+// Component
+export class App2 extends React.Component {
   render () {
     return (
       <div>
-        <button onClick={() => this.props.dispatch(fetchImage())}>Show Image</button>
+        <button onClick={() => this.props.dispatch(fetchImage())}>Show Image2</button>
           {this.props.loading 
             ? <p>Loading...</p> 
             : this.props.error
                 ? <p>Error, try again</p>
-                : <p><img alt="test" src={this.props.url}/></p>}
+                : <p><img alt="test2" src={this.props.url}/></p>}
       </div>
     )
   }
 }
 
-export const ConnectedApp = connect((state) => {
+// Store
+const sagaMiddleware = createSagaMiddleware();
+export const store2 = createStore(
+  reducer,
+  applyMiddleware(sagaMiddleware)
+);
+sagaMiddleware.run(watchFetchImage);
+
+export const ConnectedApp2 = connect((state) => {
   console.log(state);
   return state;
-})(App);
+})(App2);
